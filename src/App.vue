@@ -46,6 +46,7 @@ onMounted(() => {
 </script>
 
 <style>
+@import 'vue-draggable-resizable/style.css';
 /* Global reset and base styles */
 * {
   box-sizing: border-box;
