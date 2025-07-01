@@ -2,8 +2,9 @@
   <div class="editor-container">
     <!-- Toolbar -->
     <div class="toolbar">
-      <button @click="addWidget" class="toolbar-btn">+ Add Widget</button>
-      <button @click="resetLayout" class="toolbar-btn">Reset Layout</button>
+      <wired-button @click="addWidget" elevation="2">+ Add Widget</wired-button>
+      <wired-button @click="resetLayout" elevation="1">Reset Layout</wired-button>
+      <wired-button @click="saveLayout" elevation="1">Save Layout</wired-button>
     </div>
 
     <!-- Main Editor Area -->
@@ -14,49 +15,135 @@
         <div class="welcome-icon">🎮</div>
       </div>
 
-      <!-- Widgets will go here -->
-      <div v-for="widget in widgets" :key="widget.id" class="widget-placeholder">
-        <h3>{{ widget.name }}</h3>
-        <button @click="removeWidget(widget.id)" class="remove-btn">×</button>
-      </div>
+      <!-- Widgets -->
+      <DraggableWidget
+        v-for="widget in widgets"
+        :key="widget.id"
+        :widget="widget"
+        @remove="removeWidget"
+        @update-position="updateWidgetPosition"
+      />
+    </div>
+
+    <!-- Widget Properties Panel -->
+    <div class="properties-panel" v-if="selectedWidget">
+      <wired-card>
+        <h3>Widget Properties</h3>
+        <div class="property-group">
+          <label>Name:</label>
+          <wired-input
+            :value="selectedWidget.name"
+            @input="updateWidgetName"
+            placeholder="Widget name"
+          ></wired-input>
+        </div>
+        <div class="property-group">
+          <label>Type:</label>
+          <wired-listbox :selected="selectedWidget.type" @selected="updateWidgetType">
+            <wired-item value="button">Button</wired-item>
+            <wired-item value="text">Text</wired-item>
+            <wired-item value="input">Input</wired-item>
+            <wired-item value="canvas">Canvas</wired-item>
+          </wired-listbox>
+        </div>
+      </wired-card>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import DraggableWidget from '@/components/DraggableWidget.vue'
 
 // Types
 interface Widget {
   id: number
   name: string
   type: string
+  x: number
+  y: number
+  width: number
+  height: number
 }
 
 // Reactive data
 const widgets = ref<Widget[]>([])
+const selectedWidget = ref<Widget | null>(null)
 let nextId = 1
 
 // Methods
 const addWidget = () => {
-  widgets.value.push({
+  const newWidget: Widget = {
     id: nextId++,
     name: `Widget ${nextId - 1}`,
-    type: 'placeholder',
-  })
+    type: 'button',
+    x: Math.random() * 400 + 50,
+    y: Math.random() * 300 + 50,
+    width: 200,
+    height: 150,
+  }
+  widgets.value.push(newWidget)
+  selectedWidget.value = newWidget
 }
 
 const removeWidget = (id: number) => {
   const index = widgets.value.findIndex((w) => w.id === id)
   if (index !== -1) {
+    if (selectedWidget.value?.id === id) {
+      selectedWidget.value = null
+    }
     widgets.value.splice(index, 1)
   }
 }
 
 const resetLayout = () => {
   widgets.value = []
+  selectedWidget.value = null
   nextId = 1
 }
+
+const saveLayout = () => {
+  const layout = JSON.stringify(widgets.value, null, 2)
+  console.log('Layout saved:', layout)
+  localStorage.setItem('widget-layout', layout)
+}
+
+const updateWidgetPosition = (id: number, x: number, y: number) => {
+  const widget = widgets.value.find((w) => w.id === id)
+  if (widget) {
+    widget.x = x
+    widget.y = y
+  }
+}
+
+const updateWidgetName = (event: Event) => {
+  if (selectedWidget.value) {
+    selectedWidget.value.name = (event.target as HTMLInputElement).value
+  }
+}
+
+const updateWidgetType = (event: CustomEvent) => {
+  if (selectedWidget.value) {
+    selectedWidget.value.type = event.detail.selected
+  }
+}
+
+// Load saved layout on mount
+onMounted(() => {
+  const saved = localStorage.getItem('widget-layout')
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved)
+      widgets.value = parsed
+      if (parsed.length > 0) {
+        nextId = Math.max(...parsed.map((w: Widget) => w.id)) + 1
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_) {
+      console.warn('Failed to load saved layout')
+    }
+  }
+})
 </script>
 
 <style scoped>
@@ -64,61 +151,45 @@ const resetLayout = () => {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #2a2a2a;
+  background: var(--bg-primary);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .toolbar {
-  background: #1a1a1a;
+  background: var(--bg-secondary);
   padding: 1rem;
-  border-bottom: 1px solid #444;
+  border-bottom: 2px solid var(--border-color);
   display: flex;
   gap: 1rem;
-}
-
-.toolbar-btn {
-  background: #444;
-  color: #fff;
-  border: 1px solid #666;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: 'Courier New', monospace;
-  transition: background 0.2s;
-}
-
-.toolbar-btn:hover {
-  background: #555;
+  box-shadow: var(--shadow);
 }
 
 .editor-workspace {
   flex: 1;
-  padding: 2rem;
   position: relative;
-  background: linear-gradient(
-    45deg,
-    #2a2a2a 25%,
-    #323232 25%,
-    #323232 50%,
-    #2a2a2a 50%,
-    #2a2a2a 75%,
-    #323232 75%
-  );
+  background: var(--bg-primary);
+  background-image: radial-gradient(circle, var(--border-color) 1px, transparent 1px);
   background-size: 20px 20px;
+  overflow: hidden;
 }
 
 .welcome-message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   text-align: center;
-  margin-top: 4rem;
+  color: var(--text-secondary);
 }
 
 .welcome-message h2 {
-  color: #fff;
   margin-bottom: 1rem;
+  color: var(--text-primary);
 }
 
 .welcome-message p {
-  color: #ccc;
   margin-bottom: 2rem;
+  color: var(--text-secondary);
 }
 
 .welcome-icon {
@@ -126,39 +197,33 @@ const resetLayout = () => {
   opacity: 0.5;
 }
 
-.widget-placeholder {
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px dashed #666;
+.properties-panel {
+  position: fixed;
+  top: 100px;
+  right: 20px;
+  width: 300px;
+  background: var(--bg-secondary);
   border-radius: 8px;
-  padding: 2rem;
-  margin: 1rem;
-  display: inline-block;
-  position: relative;
-  min-width: 200px;
-  min-height: 150px;
+  box-shadow: var(--shadow);
+  z-index: 1000;
+  border: 1px solid var(--border-color);
 }
 
-.widget-placeholder h3 {
+.properties-panel h3 {
   margin: 0 0 1rem 0;
-  color: #fff;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
 }
 
-.remove-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: #ff5555;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
+.property-group {
+  margin-bottom: 1rem;
 }
 
-.remove-btn:hover {
-  background: #ff3333;
+.property-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 </style>

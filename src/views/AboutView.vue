@@ -1,99 +1,215 @@
 <template>
   <div class="about">
-    <div class="about-content">
-      <h1>About Game Engine Editor</h1>
-      <p>
-        A customizable, widget-based game development environment built with Vue.js and Wired.js
-      </p>
-
-      <div class="features">
-        <h2>Features</h2>
-        <ul>
-          <li>Draggable and resizable widgets</li>
-          <li>Customizable workspace layout</li>
-          <li>Hand-drawn UI aesthetic with Wired.js</li>
-          <li>Modular component system</li>
-        </ul>
-      </div>
-
-      <div class="tech-stack">
-        <h2>Built With</h2>
-        <div class="tech-items">
-          <span class="tech-item">Vue.js 3</span>
-          <span class="tech-item">Vite</span>
-          <span class="tech-item">Wired Elements</span>
-          <span class="tech-item">Bun</span>
+    <div class="about-container">
+      <wired-card class="about-card">
+        <div class="about-header">
+          <h1>🎮 Widget Editor</h1>
+          <p class="about-subtitle">
+            A drag-and-drop widget editor built with Vue.js and Wired Elements
+          </p>
         </div>
-      </div>
+
+        <div class="about-content">
+          <div class="about-section">
+            <h2>What is this?</h2>
+            <p>
+              This is a simple widget editor that lets you drag and drop components onto a canvas.
+              It's built as a demonstration of Vue.js 3 with TypeScript and uses Wired Elements for
+              a unique hand-drawn aesthetic.
+            </p>
+          </div>
+
+          <div class="about-section">
+            <h2>Features</h2>
+            <ul class="feature-list">
+              <li>🎯 Drag and drop widgets</li>
+              <li>🎨 Customizable properties</li>
+              <li>💾 Auto-save functionality</li>
+              <li>🌙 Dark mode support</li>
+              <li>📱 Responsive design</li>
+            </ul>
+          </div>
+
+          <div class="about-section">
+            <h2>Tech Stack</h2>
+            <div class="tech-stack">
+              <span class="tech-tag">Vue 3</span>
+              <span class="tech-tag">TypeScript</span>
+              <span class="tech-tag">Wired Elements</span>
+              <span class="tech-tag">Vite</span>
+              <span class="tech-tag">Pinia</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="about-actions">
+          <wired-button @click="$router.push('/')" class="primary-btn">
+            🚀 Try the Editor
+          </wired-button>
+        </div>
+      </wired-card>
     </div>
   </div>
 </template>
 
+<script setup lang="ts"></script>
+
 <style scoped>
 .about {
-  min-height: 100vh;
-  background: #2a2a2a;
-  color: #fff;
+  min-height: 100%;
   padding: 2rem;
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.about-container {
+  width: 100%;
+  max-width: 800px;
+}
+
+.about-card {
+  padding: 3rem !important;
+  border-radius: 12px !important;
+}
+
+.about-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.about-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.about-subtitle {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
 }
 
 .about-content {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem;
+  margin-bottom: 3rem;
 }
 
-.about-content h1 {
-  font-family: 'Courier New', monospace;
+.about-section {
+  margin-bottom: 2.5rem;
+}
+
+.about-section:last-child {
+  margin-bottom: 0;
+}
+
+.about-section h2 {
+  font-size: 1.5rem;
   margin-bottom: 1rem;
-  color: #4caf50;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
-.about-content p {
-  font-size: 1.2rem;
-  margin-bottom: 2rem;
-  color: #ccc;
+.about-section p {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
 }
 
-.features,
-.tech-stack {
-  margin: 2rem 0;
-}
-
-.features h2,
-.tech-stack h2 {
-  color: #fff;
-  border-bottom: 2px solid #444;
-  padding-bottom: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.features ul {
+.feature-list {
   list-style: none;
   padding: 0;
 }
 
-.features li {
-  padding: 0.5rem 0;
-  color: #ccc;
+.feature-list li {
+  font-size: 1.1rem;
+  padding: 0.75rem 0;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
 }
 
-.features li:before {
-  content: '🎮 ';
-  margin-right: 0.5rem;
+.feature-list li:last-child {
+  border-bottom: none;
 }
 
-.tech-items {
+.tech-stack {
   display: flex;
-  gap: 1rem;
   flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
-.tech-item {
-  background: rgba(255, 255, 255, 0.1);
+.tech-tag {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
   padding: 0.5rem 1rem;
   border-radius: 20px;
-  border: 1px solid #666;
   font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+}
+
+.about-actions {
+  text-align: center;
+}
+
+.primary-btn {
+  font-size: 1.1rem !important;
+  padding: 1rem 2rem !important;
+  font-weight: 600 !important;
+}
+
+.primary-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .about {
+    padding: 1rem;
+  }
+
+  .about-card {
+    padding: 2rem !important;
+  }
+
+  .about-header h1 {
+    font-size: 2rem;
+  }
+
+  .about-subtitle {
+    font-size: 1.1rem;
+  }
+
+  .about-section h2 {
+    font-size: 1.3rem;
+  }
+
+  .about-section p {
+    font-size: 1rem;
+  }
+
+  .feature-list li {
+    font-size: 1rem;
+  }
+
+  .tech-stack {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .about-card {
+    padding: 1.5rem !important;
+  }
+
+  .about-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .primary-btn {
+    font-size: 1rem !important;
+    padding: 0.875rem 1.5rem !important;
+  }
 }
 </style>
