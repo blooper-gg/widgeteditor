@@ -10,17 +10,17 @@
     @dragging="onDrag"
     @resizing="onResize"
   >
-    <div class="widget-content">
+    <wired-card elevation="2" class="widget-card">
       <div class="widget-header">
         <h4>{{ widget.name }}</h4>
-        <button @click="removeWidget" class="remove-btn">✕</button>
+        <wired-icon-button @click="removeWidget" class="remove-btn"> ✕ </wired-icon-button>
       </div>
 
       <div class="widget-body">
         <p>{{ widget.type }} Widget</p>
         <p>Drag me around and resize me!</p>
       </div>
-    </div>
+    </wired-card>
   </vue-draggable-resizable>
 </template>
 
@@ -65,49 +65,62 @@ const removeWidget = () => {
 </script>
 
 <style>
-@import "vue-draggable-resizable/style.css";
+@import 'vue-draggable-resizable/style.css';
 </style>
 
 <style scoped>
-.widget-content {
+/* Override vue-draggable-resizable default border */
+.vdr {
+  border: 2px solid transparent !important;
+}
+
+/* Add border only when active */
+.vdr.active {
+  border: 2px dashed #007bff !important;
+}
+
+/* Dark mode support for the active border */
+.dark-mode .vdr.active {
+  border: 2px dashed #4dabf7 !important;
+}
+
+.widget-card {
   width: 100%;
   height: 100%;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  --wired-card-background-fill: white;
 }
 
 .widget-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px;
-  background: #f5f5f5;
-  border-bottom: 1px solid #ddd;
+  padding: 12px 16px;
+  border-bottom: 2px solid #666;
   cursor: move;
+  background: rgba(248, 248, 248, 0.8);
 }
 
 .widget-header h4 {
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  font-family: 'Comic Sans MS', cursive, sans-serif;
 }
 
 .remove-btn {
-  background: #ff4444;
-  color: white;
-  border: none;
-  border-radius: 3px;
-  padding: 2px 6px;
-  cursor: pointer;
-  font-size: 12px;
+  --wired-icon-button-color: #ff4444;
+  --wired-icon-button-bg-color: transparent;
+  font-size: 14px;
+  font-weight: bold;
 }
 
 .widget-body {
   flex: 1;
-  padding: 16px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -116,7 +129,16 @@ const removeWidget = () => {
 }
 
 .widget-body p {
-  margin: 4px 0;
-  color: #666;
+  margin: 8px 0;
+  color: #555;
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.widget-body p:first-child {
+  font-weight: bold;
+  color: #333;
+  font-size: 16px;
 }
 </style>
