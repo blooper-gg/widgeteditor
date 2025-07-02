@@ -16,7 +16,7 @@ export default defineConfig({
     }),
     vueDevTools(),
   ],
-  base: '/widgeteditor',
+  base: '/widgeteditor/',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
