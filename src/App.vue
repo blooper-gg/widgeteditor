@@ -4,14 +4,7 @@
       <div class="nav-brand">
         <h1>blooper editor</h1>
       </div>
-      <div class="nav-center">
-        <span :class="{ active: $route.path === '/' }">
-          <wired-button @click="$router.push('/')"> Editor </wired-button>
-        </span>
-        <span :class="{ active: $route.path === '/about' }">
-          <wired-button @click="$router.push('/about')"> About </wired-button>
-        </span>
-      </div>
+
       <div class="nav-controls">
         <wired-toggle v-if="mounted" :checked="isDarkMode" @change="toggleDarkMode"></wired-toggle>
         <span class="dark-mode-label">{{ isDarkMode ? 'Dark' : 'Light' }}</span>
