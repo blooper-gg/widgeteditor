@@ -4,6 +4,9 @@
     :h="widget.height"
     :x="widget.x"
     :y="widget.y"
+    :min-width="80"
+    :min-height="40"
+    :grid="isShiftPressed ? [20, 20] : [1, 1]"
     :parent="true"
     :resizable="true"
     :draggable="true"
@@ -30,6 +33,7 @@
 
 <script setup lang="ts">
 import VueDraggableResizable from 'vue-draggable-resizable'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 // Define the Widget interface
 interface Widget {
@@ -54,6 +58,33 @@ const emit = defineEmits<{
   updateSize: [id: number, width: number, height: number]
 }>()
 
+// Grid snapping state
+const isShiftPressed = ref(false)
+
+// Keyboard event handlers
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Shift') {
+    isShiftPressed.value = true
+  }
+}
+
+const handleKeyUp = (event: KeyboardEvent) => {
+  if (event.key === 'Shift') {
+    isShiftPressed.value = false
+  }
+}
+
+// Setup event listeners
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('keyup', handleKeyUp)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('keyup', handleKeyUp)
+})
+
 const onDrag = (x: number, y: number) => {
   emit('updatePosition', props.widget.id, x, y)
 }
@@ -70,6 +101,16 @@ const removeWidget = () => {
 
 <style>
 @import 'vue-draggable-resizable/style.css';
+
+/* Show resize handles on hover (only when not locked) */
+.editor-workspace:not(.locked) .vdr:hover .handle {
+  display: block !important;
+}
+
+/* Show resize handles when active */
+.vdr.active .handle {
+  display: block !important;
+}
 </style>
 
 <style scoped>
@@ -78,9 +119,19 @@ const removeWidget = () => {
   border: 2px solid transparent;
 }
 
+/* Add border on hover (only when not locked) */
+.editor-workspace:not(.locked) .vdr:hover {
+  border: 2px dashed rgba(0, 123, 255, 0.5);
+}
+
 /* Add border only when active */
 .vdr.active {
   border: 2px dashed #007bff;
+}
+
+/* Dark mode support for the hover border */
+.dark-mode .editor-workspace:not(.locked) .vdr:hover {
+  border: 2px dashed rgba(77, 171, 247, 0.5);
 }
 
 /* Dark mode support for the active border */
