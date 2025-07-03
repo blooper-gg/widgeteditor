@@ -210,7 +210,9 @@ const handleFileImport = (event: Event) => {
             : { width: 1200, height: 800 }
 
           widgets.value = viewData.widgets.map((widget: Widget) => {
-            if (!widget.responsive?.enabled) {
+            // Only convert widgets that don't have responsive property at all (true legacy widgets)
+            // Don't convert widgets that have responsive.enabled = false (user explicitly disabled it)
+            if (!widget.responsive) {
               // Convert legacy widgets to responsive positioning using utility function
               return convertWidgetToResponsive(widget, container)
             }
@@ -403,7 +405,9 @@ onMounted(() => {
           : { width: 1200, height: 800 }
 
         widgets.value = parsed.widgets.map((widget: Widget) => {
-          if (!widget.responsive?.enabled) {
+          // Only convert widgets that don't have responsive property at all (true legacy widgets)
+          // Don't convert widgets that have responsive.enabled = false (user explicitly disabled it)
+          if (!widget.responsive) {
             // Convert legacy widgets to responsive positioning using utility function
             return convertWidgetToResponsive(widget, container)
           }

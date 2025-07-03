@@ -19,6 +19,7 @@
         :key="widget.id"
         :widget="widget"
         :container-dimensions="containerDimensions"
+        :is-locked="isLocked"
         @remove="(id) => $emit('remove-widget', id)"
         @update-position="(id, x, y) => $emit('update-widget-position', id, x, y)"
         @update-size="(id, width, height) => $emit('update-widget-size', id, width, height)"

@@ -15,7 +15,61 @@
     :data-responsive="widget.responsive?.enabled ? 'true' : 'false'"
     @dragging="onDrag"
     @resizing="onResize"
+    ref="draggableRef"
+    class="widget-container"
   >
+    <!-- Custom edge detection zones - positioned relative to the entire widget -->
+    <div
+      v-if="!isLocked"
+      class="resize-edge resize-edge-top"
+      @mousedown="startEdgeResize($event, 'top')"
+      @touchstart="startEdgeResize($event, 'top')"
+    ></div>
+    <div
+      v-if="!isLocked"
+      class="resize-edge resize-edge-right"
+      @mousedown="startEdgeResize($event, 'right')"
+      @touchstart="startEdgeResize($event, 'right')"
+    ></div>
+    <div
+      v-if="!isLocked"
+      class="resize-edge resize-edge-bottom"
+      @mousedown="startEdgeResize($event, 'bottom')"
+      @touchstart="startEdgeResize($event, 'bottom')"
+    ></div>
+    <div
+      v-if="!isLocked"
+      class="resize-edge resize-edge-left"
+      @mousedown="startEdgeResize($event, 'left')"
+      @touchstart="startEdgeResize($event, 'left')"
+    ></div>
+
+    <!-- Corner detection zones -->
+    <div
+      v-if="!isLocked"
+      class="resize-corner resize-corner-tl"
+      @mousedown="startEdgeResize($event, 'tl')"
+      @touchstart="startEdgeResize($event, 'tl')"
+    ></div>
+    <div
+      v-if="!isLocked"
+      class="resize-corner resize-corner-tr"
+      @mousedown="startEdgeResize($event, 'tr')"
+      @touchstart="startEdgeResize($event, 'tr')"
+    ></div>
+    <div
+      v-if="!isLocked"
+      class="resize-corner resize-corner-bl"
+      @mousedown="startEdgeResize($event, 'bl')"
+      @touchstart="startEdgeResize($event, 'bl')"
+    ></div>
+    <div
+      v-if="!isLocked"
+      class="resize-corner resize-corner-br"
+      @mousedown="startEdgeResize($event, 'br')"
+      @touchstart="startEdgeResize($event, 'br')"
+    ></div>
+
     <wired-card elevation="2" class="widget-card">
       <div class="widget-header">
         <h4>{{ widget.name }}</h4>
@@ -53,6 +107,7 @@ import { calculateWidgetPosition } from '@/utils/responsive-positioning'
 const props = defineProps<{
   widget: Widget
   containerDimensions: ContainerDimensions
+  isLocked?: boolean
 }>()
 
 // Emits
@@ -63,8 +118,23 @@ const emit = defineEmits<{
   updatePositionAndSize: [id: number, x: number, y: number, width: number, height: number]
 }>()
 
+// Refs
+const draggableRef = ref<HTMLElement | null>(null)
+
 // Grid snapping state
 const isShiftPressed = ref(false)
+
+// Custom resize state
+const isCustomResizing = ref(false)
+const customResizeData = ref<{
+  startX: number
+  startY: number
+  startWidth: number
+  startHeight: number
+  startPosX: number
+  startPosY: number
+  direction: string
+} | null>(null)
 
 // Calculate final position based on responsive settings
 const calculatedPosition = computed(() => {
@@ -93,6 +163,11 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
   window.removeEventListener('keyup', handleKeyUp)
+
+  // Clean up custom resize listeners if they exist
+  if (isCustomResizing.value) {
+    stopCustomResize()
+  }
 })
 
 const onDrag = (x: number, y: number) => {
@@ -117,6 +192,193 @@ const onResize = (x: number, y: number, width: number, height: number) => {
 const removeWidget = () => {
   emit('remove', props.widget.id)
 }
+
+// Custom edge resize functionality
+const startEdgeResize = (event: MouseEvent | TouchEvent, direction: string) => {
+  if (props.isLocked) return
+
+  event.preventDefault()
+  event.stopPropagation()
+
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
+
+  isCustomResizing.value = true
+  customResizeData.value = {
+    startX: clientX,
+    startY: clientY,
+    startWidth: calculatedPosition.value.width,
+    startHeight: calculatedPosition.value.height,
+    startPosX: calculatedPosition.value.x,
+    startPosY: calculatedPosition.value.y,
+    direction,
+  }
+
+  // Add global event listeners
+  document.addEventListener('mousemove', handleCustomResize)
+  document.addEventListener('mouseup', stopCustomResize)
+  document.addEventListener('touchmove', handleCustomResize)
+  document.addEventListener('touchend', stopCustomResize)
+
+  // Add cursor styling
+  document.body.style.cursor = getCursorForDirection(direction)
+  document.body.style.userSelect = 'none'
+}
+
+const handleCustomResize = (event: MouseEvent | TouchEvent) => {
+  if (!isCustomResizing.value || !customResizeData.value) return
+
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
+
+  const deltaX = clientX - customResizeData.value.startX
+  const deltaY = clientY - customResizeData.value.startY
+  const direction = customResizeData.value.direction
+
+  let newWidth = customResizeData.value.startWidth
+  let newHeight = customResizeData.value.startHeight
+  let newX = customResizeData.value.startPosX
+  let newY = customResizeData.value.startPosY
+
+  // Apply grid snapping if shift is pressed
+  const gridX = isShiftPressed.value ? 20 : 1
+  const gridY = isShiftPressed.value ? 20 : 1
+
+  // Calculate new dimensions based on direction
+  switch (direction) {
+    case 'top':
+      newHeight = Math.max(
+        props.widget.responsive?.minHeight || 40,
+        customResizeData.value.startHeight - deltaY,
+      )
+      newY = customResizeData.value.startPosY + (customResizeData.value.startHeight - newHeight)
+      break
+    case 'right':
+      newWidth = Math.max(
+        props.widget.responsive?.minWidth || 80,
+        customResizeData.value.startWidth + deltaX,
+      )
+      break
+    case 'bottom':
+      newHeight = Math.max(
+        props.widget.responsive?.minHeight || 40,
+        customResizeData.value.startHeight + deltaY,
+      )
+      break
+    case 'left':
+      newWidth = Math.max(
+        props.widget.responsive?.minWidth || 80,
+        customResizeData.value.startWidth - deltaX,
+      )
+      newX = customResizeData.value.startPosX + (customResizeData.value.startWidth - newWidth)
+      break
+    case 'tl':
+      newWidth = Math.max(
+        props.widget.responsive?.minWidth || 80,
+        customResizeData.value.startWidth - deltaX,
+      )
+      newHeight = Math.max(
+        props.widget.responsive?.minHeight || 40,
+        customResizeData.value.startHeight - deltaY,
+      )
+      newX = customResizeData.value.startPosX + (customResizeData.value.startWidth - newWidth)
+      newY = customResizeData.value.startPosY + (customResizeData.value.startHeight - newHeight)
+      break
+    case 'tr':
+      newWidth = Math.max(
+        props.widget.responsive?.minWidth || 80,
+        customResizeData.value.startWidth + deltaX,
+      )
+      newHeight = Math.max(
+        props.widget.responsive?.minHeight || 40,
+        customResizeData.value.startHeight - deltaY,
+      )
+      newY = customResizeData.value.startPosY + (customResizeData.value.startHeight - newHeight)
+      break
+    case 'bl':
+      newWidth = Math.max(
+        props.widget.responsive?.minWidth || 80,
+        customResizeData.value.startWidth - deltaX,
+      )
+      newHeight = Math.max(
+        props.widget.responsive?.minHeight || 40,
+        customResizeData.value.startHeight + deltaY,
+      )
+      newX = customResizeData.value.startPosX + (customResizeData.value.startWidth - newWidth)
+      break
+    case 'br':
+      newWidth = Math.max(
+        props.widget.responsive?.minWidth || 80,
+        customResizeData.value.startWidth + deltaX,
+      )
+      newHeight = Math.max(
+        props.widget.responsive?.minHeight || 40,
+        customResizeData.value.startHeight + deltaY,
+      )
+      break
+  }
+
+  // Apply grid snapping
+  newWidth = Math.round(newWidth / gridX) * gridX
+  newHeight = Math.round(newHeight / gridY) * gridY
+  newX = Math.round(newX / gridX) * gridX
+  newY = Math.round(newY / gridY) * gridY
+
+  // Apply container constraints
+  const maxWidth = props.widget.responsive?.maxWidth || props.containerDimensions.width
+  const maxHeight = props.widget.responsive?.maxHeight || props.containerDimensions.height
+
+  newWidth = Math.min(maxWidth, newWidth)
+  newHeight = Math.min(maxHeight, newHeight)
+
+  // Ensure position stays within container bounds
+  newX = Math.max(0, Math.min(props.containerDimensions.width - newWidth, newX))
+  newY = Math.max(0, Math.min(props.containerDimensions.height - newHeight, newY))
+
+  // Emit the resize event
+  if (props.widget.responsive?.enabled) {
+    emit('updatePositionAndSize', props.widget.id, newX, newY, newWidth, newHeight)
+  } else {
+    emit('updatePosition', props.widget.id, newX, newY)
+    emit('updateSize', props.widget.id, newWidth, newHeight)
+  }
+}
+
+const stopCustomResize = () => {
+  if (!isCustomResizing.value) return
+
+  isCustomResizing.value = false
+  customResizeData.value = null
+
+  // Remove global event listeners
+  document.removeEventListener('mousemove', handleCustomResize)
+  document.removeEventListener('mouseup', stopCustomResize)
+  document.removeEventListener('touchmove', handleCustomResize)
+  document.removeEventListener('touchend', stopCustomResize)
+
+  // Reset cursor
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+}
+
+const getCursorForDirection = (direction: string): string => {
+  switch (direction) {
+    case 'top':
+    case 'bottom':
+      return 'ns-resize'
+    case 'left':
+    case 'right':
+      return 'ew-resize'
+    case 'tl':
+    case 'br':
+      return 'nw-resize'
+    case 'tr':
+    case 'bl':
+      return 'ne-resize'
+    default:
+      return 'default'
+  }
+}
 </script>
 
 <style>
@@ -137,6 +399,13 @@ const removeWidget = () => {
 /* Override vue-draggable-resizable default border */
 .vdr {
   border: 2px solid transparent;
+}
+
+/* Widget container positioning */
+.widget-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 
 /* Make entire widget draggable when unlocked */
@@ -334,4 +603,95 @@ const removeWidget = () => {
   -ms-user-select: text !important;
   user-select: text !important;
 }
+
+/* Custom resize edge detection zones */
+.resize-edge {
+  position: absolute;
+  background: transparent;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+.resize-edge-top {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.resize-edge-right {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.resize-edge-bottom {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.resize-edge-left {
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+/* Custom resize corner detection zones */
+.resize-corner {
+  position: absolute;
+  background: transparent;
+  z-index: 101;
+  width: 12px;
+  height: 12px;
+  pointer-events: auto;
+}
+
+.resize-corner-tl {
+  top: 0;
+  left: 0;
+  cursor: nw-resize;
+}
+
+.resize-corner-tr {
+  top: 0;
+  right: 0;
+  cursor: ne-resize;
+}
+
+.resize-corner-bl {
+  bottom: 0;
+  left: 0;
+  cursor: ne-resize;
+}
+
+.resize-corner-br {
+  bottom: 0;
+  right: 0;
+  cursor: nw-resize;
+}
+
+/* Hide default vue-draggable-resizable handles when custom resize is active */
+.editor-workspace:not(.locked) .vdr:hover .resize-edge,
+.editor-workspace:not(.locked) .vdr:hover .resize-corner {
+  display: block;
+}
+
+/* Debug mode: uncomment to see the resize zones */
+/*
+.resize-edge {
+  background: rgba(255, 0, 0, 0.1) !important;
+}
+
+.resize-corner {
+  background: rgba(0, 255, 0, 0.3) !important;
+}
+*/
 </style>
