@@ -1,28 +1,40 @@
 <template>
   <vue-draggable-resizable
-    :w="widget.width"
-    :h="widget.height"
-    :x="widget.x"
-    :y="widget.y"
-    :min-width="80"
-    :min-height="40"
+    :w="calculatedPosition.width"
+    :h="calculatedPosition.height"
+    :x="calculatedPosition.x"
+    :y="calculatedPosition.y"
+    :min-width="widget.responsive?.minWidth || 80"
+    :min-height="widget.responsive?.minHeight || 40"
+    :max-width="widget.responsive?.maxWidth || containerDimensions.width"
+    :max-height="widget.responsive?.maxHeight || containerDimensions.height"
     :grid="isShiftPressed ? [20, 20] : [1, 1]"
     :parent="true"
     :resizable="true"
     :draggable="true"
-    drag-handle=".widget-header"
+    :data-responsive="widget.responsive?.enabled ? 'true' : 'false'"
     @dragging="onDrag"
     @resizing="onResize"
   >
     <wired-card elevation="2" class="widget-card">
       <div class="widget-header">
         <h4>{{ widget.name }}</h4>
-        <wired-icon-button @click="removeWidget" class="remove-btn"> ✕ </wired-icon-button>
+        <div class="widget-controls">
+          <span v-if="widget.responsive?.enabled" class="anchor-indicator">
+            {{ widget.responsive.anchorEdges.vertical[0].toUpperCase()
+            }}{{ widget.responsive.anchorEdges.horizontal[0].toUpperCase() }}
+          </span>
+          <wired-icon-button @click="removeWidget" class="remove-btn"> ✕ </wired-icon-button>
+        </div>
       </div>
 
       <div class="widget-body">
         <p>{{ widget.type }} Widget</p>
-        <p>Drag me around and resize me!</p>
+        <p v-if="widget.responsive?.enabled" class="responsive-info">
+          📍 Responsive: {{ Math.round(widget.responsive.widthPercent || 0) }}% ×
+          {{ Math.round(widget.responsive.heightPercent || 0) }}%
+        </p>
+        <p v-else class="responsive-info">📐 Fixed: {{ widget.width }}px × {{ widget.height }}px</p>
         <input type="text" />
         <wired-button>Click me</wired-button>
         <wired-toggle />
@@ -33,22 +45,14 @@
 
 <script setup lang="ts">
 import VueDraggableResizable from 'vue-draggable-resizable'
-import { ref, onMounted, onUnmounted } from 'vue'
-
-// Define the Widget interface
-interface Widget {
-  id: number
-  name: string
-  type: string
-  x: number
-  y: number
-  width: number
-  height: number
-}
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import type { Widget, ContainerDimensions } from '@/types/widget'
+import { calculateWidgetPosition } from '@/utils/responsive-positioning'
 
 // Props
 const props = defineProps<{
   widget: Widget
+  containerDimensions: ContainerDimensions
 }>()
 
 // Emits
@@ -56,10 +60,16 @@ const emit = defineEmits<{
   remove: [id: number]
   updatePosition: [id: number, x: number, y: number]
   updateSize: [id: number, width: number, height: number]
+  updatePositionAndSize: [id: number, x: number, y: number, width: number, height: number]
 }>()
 
 // Grid snapping state
 const isShiftPressed = ref(false)
+
+// Calculate final position based on responsive settings
+const calculatedPosition = computed(() => {
+  return calculateWidgetPosition(props.widget, props.containerDimensions)
+})
 
 // Keyboard event handlers
 const handleKeyDown = (event: KeyboardEvent) => {
@@ -86,12 +96,22 @@ onUnmounted(() => {
 })
 
 const onDrag = (x: number, y: number) => {
-  emit('updatePosition', props.widget.id, x, y)
+  // For responsive widgets, emit combined update to prevent race conditions
+  if (props.widget.responsive?.enabled) {
+    emit('updatePositionAndSize', props.widget.id, x, y, props.widget.width, props.widget.height)
+  } else {
+    emit('updatePosition', props.widget.id, x, y)
+  }
 }
 
 const onResize = (x: number, y: number, width: number, height: number) => {
-  emit('updatePosition', props.widget.id, x, y)
-  emit('updateSize', props.widget.id, width, height)
+  // For responsive widgets, emit combined update to prevent race conditions
+  if (props.widget.responsive?.enabled) {
+    emit('updatePositionAndSize', props.widget.id, x, y, width, height)
+  } else {
+    emit('updatePosition', props.widget.id, x, y)
+    emit('updateSize', props.widget.id, width, height)
+  }
 }
 
 const removeWidget = () => {
@@ -119,6 +139,11 @@ const removeWidget = () => {
   border: 2px solid transparent;
 }
 
+/* Make entire widget draggable when unlocked */
+.editor-workspace:not(.locked) .vdr {
+  cursor: move;
+}
+
 /* Add border on hover (only when not locked) */
 .editor-workspace:not(.locked) .vdr:hover {
   border: 2px dashed rgba(0, 123, 255, 0.5);
@@ -137,6 +162,24 @@ const removeWidget = () => {
 /* Dark mode support for the active border */
 .dark-mode .vdr.active {
   border: 2px dashed #4dabf7;
+}
+
+/* Responsive widget styling */
+.vdr[data-responsive='true'] {
+  /* Add a subtle glow for responsive widgets */
+  transition: box-shadow 0.3s ease;
+}
+
+.vdr[data-responsive='true']:hover {
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3);
+}
+
+.vdr[data-responsive='true'].active {
+  border: 2px dashed #22c55e;
+}
+
+.dark-mode .vdr[data-responsive='true'].active {
+  border: 2px dashed #4ade80;
 }
 
 .widget-card {
@@ -161,7 +204,6 @@ const removeWidget = () => {
   align-items: center;
   padding: 0px 8px;
   border-bottom: 1px dashed #666;
-  cursor: move;
   background: rgba(248, 248, 248, 0.95);
   backdrop-filter: blur(4px);
   z-index: 10;
@@ -190,10 +232,22 @@ const removeWidget = () => {
   border-bottom: 1px dashed #007bff;
 }
 
+/* Responsive widget active state */
+.editor-workspace:not(.locked) .vdr[data-responsive='true'].active .widget-header {
+  background: rgba(34, 197, 94, 0.15);
+  border-bottom: 1px dashed #22c55e;
+}
+
 /* Dark mode active state (only when not locked) */
 .dark-mode .editor-workspace:not(.locked) .vdr.active .widget-header {
   background: rgba(77, 171, 247, 0.15);
   border-bottom: 1px dashed #4dabf7;
+}
+
+/* Dark mode responsive active state */
+.dark-mode .editor-workspace:not(.locked) .vdr[data-responsive='true'].active .widget-header {
+  background: rgba(74, 222, 128, 0.15);
+  border-bottom: 1px dashed #4ade80;
 }
 
 .widget-header h4 {
@@ -202,6 +256,22 @@ const removeWidget = () => {
   font-weight: bold;
   color: #333;
   font-family: 'Comic Sans MS', cursive, sans-serif;
+  flex: 1;
+}
+
+.widget-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.anchor-indicator {
+  font-size: 10px;
+  padding: 2px 4px;
+  background: rgba(34, 197, 94, 0.2);
+  border-radius: 2px;
+  color: #16a34a;
+  font-weight: bold;
 }
 
 .remove-btn {
@@ -246,6 +316,13 @@ const removeWidget = () => {
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+}
+
+.responsive-info {
+  font-size: 12px !important;
+  color: #666 !important;
+  margin: 4px 0 !important;
+  font-family: 'Courier New', monospace !important;
 }
 
 /* Allow text selection on input elements and other interactive content */
