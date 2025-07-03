@@ -8,7 +8,7 @@
         <p v-else>Click "Add Widget" to start building your responsive view</p>
         <div class="welcome-feature">
           <span class="feature-icon">📍</span>
-          <span class="feature-text">All widgets use responsive positioning by default</span>
+          <span class="feature-text">Hold shift to snap to 10px grid.</span>
         </div>
         <div class="welcome-icon">🎮</div>
       </div>
@@ -144,12 +144,20 @@ const handleResponsiveToggle = (event: CustomEvent) => {
       // Enable responsive positioning
       updatedWidget = convertWidgetToResponsive(props.selectedWidget, container)
     } else {
-      // Disable responsive positioning
+      // Disable responsive positioning - preserve all existing responsive properties
       updatedWidget = {
         ...props.selectedWidget,
         responsive: {
           ...props.selectedWidget.responsive,
           enabled: false,
+          // Ensure minimum constraints are preserved
+          minWidth:
+            props.selectedWidget.responsive?.minWidth ||
+            Math.max(80, props.selectedWidget.width * 0.6),
+          minHeight:
+            props.selectedWidget.responsive?.minHeight ||
+            Math.max(40, props.selectedWidget.height * 0.6),
+          // Preserve anchor edges
           anchorEdges: props.selectedWidget.responsive?.anchorEdges || {
             horizontal: 'left',
             vertical: 'top',

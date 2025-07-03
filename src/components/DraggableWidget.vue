@@ -4,11 +4,11 @@
     :h="calculatedPosition.height"
     :x="calculatedPosition.x"
     :y="calculatedPosition.y"
-    :min-width="widget.responsive?.minWidth || 80"
-    :min-height="widget.responsive?.minHeight || 40"
-    :max-width="widget.responsive?.maxWidth || containerDimensions.width"
-    :max-height="widget.responsive?.maxHeight || containerDimensions.height"
-    :grid="isShiftPressed ? [20, 20] : [1, 1]"
+    :min-width="effectiveMinConstraints.minWidth"
+    :min-height="effectiveMinConstraints.minHeight"
+    :max-width="effectiveMinConstraints.maxWidth"
+    :max-height="effectiveMinConstraints.maxHeight"
+    :grid="isShiftPressed ? [10, 10] : [1, 1]"
     :parent="true"
     :resizable="true"
     :draggable="true"
@@ -141,6 +141,19 @@ const calculatedPosition = computed(() => {
   return calculateWidgetPosition(props.widget, props.containerDimensions)
 })
 
+// Calculate effective minimum constraints for the widget
+const effectiveMinConstraints = computed(() => {
+  const baseMinWidth = Math.max(80, props.widget.width * 0.4)
+  const baseMinHeight = Math.max(40, props.widget.height * 0.4)
+
+  return {
+    minWidth: props.widget.responsive?.minWidth || baseMinWidth,
+    minHeight: props.widget.responsive?.minHeight || baseMinHeight,
+    maxWidth: props.widget.responsive?.maxWidth || props.containerDimensions.width,
+    maxHeight: props.widget.responsive?.maxHeight || props.containerDimensions.height,
+  }
+})
+
 // Keyboard event handlers
 const handleKeyDown = (event: KeyboardEvent) => {
   if (event.key === 'Shift') {
@@ -241,44 +254,44 @@ const handleCustomResize = (event: MouseEvent | TouchEvent) => {
   let newY = customResizeData.value.startPosY
 
   // Apply grid snapping if shift is pressed
-  const gridX = isShiftPressed.value ? 20 : 1
-  const gridY = isShiftPressed.value ? 20 : 1
+  const gridX = isShiftPressed.value ? 10 : 1
+  const gridY = isShiftPressed.value ? 10 : 1
 
   // Calculate new dimensions based on direction
   switch (direction) {
     case 'top':
       newHeight = Math.max(
-        props.widget.responsive?.minHeight || 40,
+        effectiveMinConstraints.value.minHeight,
         customResizeData.value.startHeight - deltaY,
       )
       newY = customResizeData.value.startPosY + (customResizeData.value.startHeight - newHeight)
       break
     case 'right':
       newWidth = Math.max(
-        props.widget.responsive?.minWidth || 80,
+        effectiveMinConstraints.value.minWidth,
         customResizeData.value.startWidth + deltaX,
       )
       break
     case 'bottom':
       newHeight = Math.max(
-        props.widget.responsive?.minHeight || 40,
+        effectiveMinConstraints.value.minHeight,
         customResizeData.value.startHeight + deltaY,
       )
       break
     case 'left':
       newWidth = Math.max(
-        props.widget.responsive?.minWidth || 80,
+        effectiveMinConstraints.value.minWidth,
         customResizeData.value.startWidth - deltaX,
       )
       newX = customResizeData.value.startPosX + (customResizeData.value.startWidth - newWidth)
       break
     case 'tl':
       newWidth = Math.max(
-        props.widget.responsive?.minWidth || 80,
+        effectiveMinConstraints.value.minWidth,
         customResizeData.value.startWidth - deltaX,
       )
       newHeight = Math.max(
-        props.widget.responsive?.minHeight || 40,
+        effectiveMinConstraints.value.minHeight,
         customResizeData.value.startHeight - deltaY,
       )
       newX = customResizeData.value.startPosX + (customResizeData.value.startWidth - newWidth)
@@ -286,33 +299,33 @@ const handleCustomResize = (event: MouseEvent | TouchEvent) => {
       break
     case 'tr':
       newWidth = Math.max(
-        props.widget.responsive?.minWidth || 80,
+        effectiveMinConstraints.value.minWidth,
         customResizeData.value.startWidth + deltaX,
       )
       newHeight = Math.max(
-        props.widget.responsive?.minHeight || 40,
+        effectiveMinConstraints.value.minHeight,
         customResizeData.value.startHeight - deltaY,
       )
       newY = customResizeData.value.startPosY + (customResizeData.value.startHeight - newHeight)
       break
     case 'bl':
       newWidth = Math.max(
-        props.widget.responsive?.minWidth || 80,
+        effectiveMinConstraints.value.minWidth,
         customResizeData.value.startWidth - deltaX,
       )
       newHeight = Math.max(
-        props.widget.responsive?.minHeight || 40,
+        effectiveMinConstraints.value.minHeight,
         customResizeData.value.startHeight + deltaY,
       )
       newX = customResizeData.value.startPosX + (customResizeData.value.startWidth - newWidth)
       break
     case 'br':
       newWidth = Math.max(
-        props.widget.responsive?.minWidth || 80,
+        effectiveMinConstraints.value.minWidth,
         customResizeData.value.startWidth + deltaX,
       )
       newHeight = Math.max(
-        props.widget.responsive?.minHeight || 40,
+        effectiveMinConstraints.value.minHeight,
         customResizeData.value.startHeight + deltaY,
       )
       break
@@ -325,11 +338,8 @@ const handleCustomResize = (event: MouseEvent | TouchEvent) => {
   newY = Math.round(newY / gridY) * gridY
 
   // Apply container constraints
-  const maxWidth = props.widget.responsive?.maxWidth || props.containerDimensions.width
-  const maxHeight = props.widget.responsive?.maxHeight || props.containerDimensions.height
-
-  newWidth = Math.min(maxWidth, newWidth)
-  newHeight = Math.min(maxHeight, newHeight)
+  newWidth = Math.min(effectiveMinConstraints.value.maxWidth, newWidth)
+  newHeight = Math.min(effectiveMinConstraints.value.maxHeight, newHeight)
 
   // Ensure position stays within container bounds
   newX = Math.max(0, Math.min(props.containerDimensions.width - newWidth, newX))
@@ -399,6 +409,7 @@ const getCursorForDirection = (direction: string): string => {
 /* Override vue-draggable-resizable default border */
 .vdr {
   border: 2px solid transparent;
+  position: absolute !important;
 }
 
 /* Widget container positioning */
