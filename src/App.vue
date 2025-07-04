@@ -13,14 +13,48 @@
           <span class="lock-label">{{ isLocked ? '🔒 Locked' : '🔓 Unlocked' }}</span>
         </div>
 
-        <!-- Add Widget Button (only when unlocked) -->
-        <wired-button v-if="!isLocked" @click="addWidget" elevation="2">+ Add Widget</wired-button>
+        <!-- Add Widget Dropdown (only when unlocked) -->
+        <div class="add-widget-section" v-if="!isLocked">
+          <div class="dropdown-container">
+            <wired-button @click="toggleAddWidgetDropdown" elevation="2">
+              + Add Widget {{ isAddWidgetDropdownOpen ? '▲' : '▼' }}
+            </wired-button>
+            <div class="dropdown-menu add-widget-dropdown" v-show="isAddWidgetDropdownOpen">
+              <div class="dropdown-items">
+                <wired-button
+                  v-for="widgetType in WIDGET_TYPES"
+                  :key="widgetType.id"
+                  @click="addWidget(widgetType.id)"
+                  class="dropdown-item widget-type-item"
+                >
+                  <span class="widget-icon">{{ widgetType.icon }}</span>
+                  <span class="widget-name">{{ widgetType.name }}</span>
+                </wired-button>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        <!-- View Management Buttons -->
+        <!-- View Management Dropdown -->
         <div class="view-controls">
-          <wired-button @click="resetView" elevation="1">🗑️ Reset View</wired-button>
-          <wired-button @click="exportView" elevation="1">📤 Export View</wired-button>
-          <wired-button @click="importView" elevation="1">📥 Import View</wired-button>
+          <div class="dropdown-container">
+            <wired-button @click="toggleViewDropdown" elevation="1">
+              View Controls {{ isViewDropdownOpen ? '▲' : '▼' }}
+            </wired-button>
+            <div class="dropdown-menu" v-show="isViewDropdownOpen">
+              <div class="dropdown-items">
+                <wired-button @click="handleViewControlAction('reset')" class="dropdown-item"
+                  >🗑️ Reset View</wired-button
+                >
+                <wired-button @click="handleViewControlAction('export')" class="dropdown-item"
+                  >📤 Export View</wired-button
+                >
+                <wired-button @click="handleViewControlAction('import')" class="dropdown-item"
+                  >📥 Import View</wired-button
+                >
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -62,7 +96,8 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
-import type { Widget } from '@/types/widget'
+import type { Widget, WidgetType } from '@/types/widget'
+import { WIDGET_TYPES } from '@/types/widget'
 import {
   updateWidgetResponsive,
   updateWidgetPositionAndSize as updateWidgetPositionAndSizeUtil,
@@ -88,6 +123,8 @@ const route = useRoute()
 const widgets = ref<Widget[]>([])
 const selectedWidget = ref<Widget | null>(null)
 const isLocked = ref(false)
+const isViewDropdownOpen = ref(false)
+const isAddWidgetDropdownOpen = ref(false)
 const fileInput = ref<HTMLInputElement>()
 let nextId = 1
 
@@ -111,8 +148,15 @@ const toggleLock = (event: CustomEvent) => {
   }
 }
 
-const addWidget = () => {
+const toggleAddWidgetDropdown = () => {
+  isAddWidgetDropdownOpen.value = !isAddWidgetDropdownOpen.value
+}
+
+const addWidget = (widgetType: WidgetType) => {
   if (isLocked.value) return
+
+  // Close the dropdown
+  isAddWidgetDropdownOpen.value = false
 
   // Get container dimensions for responsive positioning
   const editorWorkspace = document.querySelector('.editor-workspace')
@@ -120,19 +164,21 @@ const addWidget = () => {
     ? getContainerDimensions(editorWorkspace as HTMLElement)
     : { width: 1200, height: 800 }
 
+  // Find the widget type info for default sizing
+  const widgetTypeInfo = WIDGET_TYPES.find((w) => w.id === widgetType)
+  const defaultSize = widgetTypeInfo?.defaultSize || { width: 200, height: 150 }
+
   const baseX = Math.random() * 400 + 50
   const baseY = Math.random() * 300 + 50
-  const baseWidth = 200
-  const baseHeight = 150
 
   const newWidget: Widget = {
     id: nextId++,
-    name: `Widget ${nextId - 1}`,
-    type: 'button',
+    name: widgetTypeInfo?.name || `Widget ${nextId - 1}`,
+    type: widgetType,
     x: baseX,
     y: baseY,
-    width: baseWidth,
-    height: baseHeight,
+    width: defaultSize.width,
+    height: defaultSize.height,
   }
 
   // Convert to responsive positioning using the utility function
@@ -338,7 +384,7 @@ const updateWidgetName = (id: number, name: string) => {
   }
 }
 
-const updateWidgetType = (id: number, type: string) => {
+const updateWidgetType = (id: number, type: WidgetType) => {
   const widget = widgets.value.find((w) => w.id === id)
   if (widget) {
     widget.type = type
@@ -360,6 +406,26 @@ const updateWidgetsResponsive = (updatedWidgets: Widget[]) => {
 const selectWidget = (widget: Widget | null) => {
   if (!isLocked.value) {
     selectedWidget.value = widget
+  }
+}
+
+const toggleViewDropdown = () => {
+  isViewDropdownOpen.value = !isViewDropdownOpen.value
+}
+
+const handleViewControlAction = (action: string) => {
+  isViewDropdownOpen.value = false // Close dropdown after selection
+
+  switch (action) {
+    case 'reset':
+      resetView()
+      break
+    case 'export':
+      exportView()
+      break
+    case 'import':
+      importView()
+      break
   }
 }
 
@@ -516,7 +582,7 @@ nav {
   gap: 1rem;
   flex-wrap: wrap;
   flex: 1;
-  justify-content: center;
+  justify-content: space-between;
 }
 
 .lock-section {
@@ -538,6 +604,128 @@ nav {
 .view-controls {
   display: flex;
   gap: 0.5rem;
+}
+
+.dropdown-container {
+  position: relative;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 1000;
+  margin-top: 0.25rem;
+  min-width: 180px;
+  background: var(--bg-primary);
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: var(--shadow-md);
+}
+
+.dropdown-items {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  gap: 0.25rem;
+}
+
+.dropdown-item {
+  width: 100% !important;
+  text-align: left !important;
+  justify-content: flex-start !important;
+  --wired-button-bg-color: transparent !important;
+  --wired-button-border-color: transparent !important;
+  padding: 0.5rem !important;
+  border-radius: 4px !important;
+}
+
+.dropdown-item:hover {
+  --wired-button-bg-color: var(--bg-tertiary) !important;
+  --wired-button-border-color: var(--border-color) !important;
+  transform: none !important;
+}
+
+/* Override for regular dropdown items (not widget dropdown) */
+.dropdown-menu:not(.add-widget-dropdown) .dropdown-item {
+  min-height: auto !important;
+  padding: 0.5rem !important;
+  font-size: 14px !important;
+}
+
+/* Add Widget Dropdown Specific Styles */
+.add-widget-dropdown {
+  min-width: 200px;
+  max-width: 250px;
+  left: 0;
+  right: auto;
+  background: var(--bg-primary) !important;
+  border: 2px solid var(--border-color) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  overflow: hidden !important;
+}
+
+.add-widget-dropdown .dropdown-items {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 4px !important;
+  gap: 2px !important;
+}
+
+.widget-type-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 12px !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow: hidden !important;
+  min-height: 32px !important;
+  height: 32px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  transition: background-color 0.2s ease !important;
+  cursor: pointer !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+}
+
+.widget-type-item:hover {
+  background: var(--bg-tertiary) !important;
+  --wired-button-bg-color: var(--bg-tertiary) !important;
+  --wired-button-border-color: transparent !important;
+  transform: none !important;
+}
+
+.widget-icon {
+  font-size: 16px !important;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.widget-name {
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow: hidden !important;
+  flex: 1 !important;
 }
 
 .nav-center {
@@ -610,6 +798,22 @@ wired-input {
 wired-listbox {
   --wired-listbox-bg-color: var(--bg-primary) !important;
   --wired-listbox-color: var(--text-primary) !important;
+}
+
+wired-checkbox {
+  --wired-checkbox-bg-color: var(--bg-primary) !important;
+  --wired-checkbox-color: var(--text-primary) !important;
+  --wired-checkbox-border-color: var(--border-color) !important;
+}
+
+wired-item {
+  --wired-item-bg-color: var(--bg-primary) !important;
+  --wired-item-color: var(--text-primary) !important;
+}
+
+wired-item:hover,
+wired-item[selected] {
+  --wired-item-bg-color: var(--bg-tertiary) !important;
 }
 
 /* Responsive design */
